@@ -322,7 +322,7 @@ public class Controller {
     private static void saveAsyncEmployees(DataBase dataBase){
         try {
             ExecutorService executorService = Executors.newFixedThreadPool(10);
-            LinkedList<CompletableFuture<Void>> completableFutures = new LinkedList<>();
+            ArrayList<CompletableFuture<Void>> completableFutures = new ArrayList<>();
             dataBase.getMainDataBase().forEach((pesel, employee) -> {
                 completableFutures.add(CompletableFuture.runAsync(new WriteRunnable(employee), executorService));
             });
@@ -339,7 +339,6 @@ public class Controller {
             System.out.println("Zapisano Asynchronicznie");
         }catch (Exception e){
             e.printStackTrace();
-            System.out.println("Ab");
         }
 
     }
