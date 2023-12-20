@@ -2,6 +2,7 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
@@ -87,7 +88,7 @@ public class Controller {
     }
 
     public static void showMenu(DataBase dataBase){
-        int choose = 1;
+        int choose = 0;
         do{
             try{
                 System.out.println("MENU");
@@ -234,7 +235,7 @@ public class Controller {
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
 
             dataBase.createCopytemp(out);
-            out.writeObject(new endOfFile());
+            out.writeObject(new EndOfFile());
             out.close();
             fileOut.close();
         }catch (IOException e){
@@ -248,7 +249,7 @@ public class Controller {
             ObjectInputStream in = new ObjectInputStream(fileInputStream);
             Object obj = null;
             dataBase.clear();
-            while((obj = in.readObject()) instanceof endOfFile == false){
+            while((obj = in.readObject()) instanceof EndOfFile == false){
                 dataBase.addEmployee((Pracownik) obj);
             }
             in.close();
@@ -282,25 +283,20 @@ public class Controller {
 
     }
 
-    public static Runnable saveEmployee (Pracownik employee){
+    public static void saveEmployee (Pracownik employee){
         try{
 
             FileOutputStream fileOut = new FileOutputStream("./data/employees/"+employee.getPesel()+".txt");
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
 
             out.writeObject(employee);
-            out.writeObject(new endOfFile());
+            out.writeObject(new EndOfFile());
             out.close();
             fileOut.close();
         }catch (IOException e){
             e.printStackTrace();
         }
-        return new Runnable() {
-            @Override
-            public void run() {
 
-            }
-        };
     }
 
 
@@ -328,7 +324,7 @@ public class Controller {
             ExecutorService executorService = Executors.newFixedThreadPool(10);
             LinkedList<CompletableFuture<Void>> completableFutures = new LinkedList<>();
             dataBase.getMainDataBase().forEach((pesel, employee) -> {
-                completableFutures.add(CompletableFuture.runAsync(saveEmployee(employee), executorService));
+                completableFutures.add(CompletableFuture.runAsync(new WriteRunnable(employee), executorService));
             });
             for (CompletableFuture<Void> cFut : completableFutures
             ) {
@@ -351,13 +347,13 @@ public class Controller {
     private static void getAsyncEmployees(DataBase dataBase){
         try {
             ExecutorService executorService = Executors.newFixedThreadPool(10);
-            LinkedList<CompletableFuture<Pracownik>> completableFutures = new LinkedList<>();
+            ArrayList<CompletableFuture<Pracownik>> completableFutures = new ArrayList<>();
 
             File employeesData = new File("./data/employees/");
 
             for (File employeeFile : employeesData.listFiles()
                  ) {
-                completableFutures.add(CompletableFuture.supplyAsync((Supplier<Pracownik>) new SupplierPracownik(employeeFile.getPath()), executorService));
+                completableFutures.add(CompletableFuture.supplyAsync( new SupplierPracownik(employeeFile.getPath()), executorService));
             }
 
             for (CompletableFuture<Pracownik> cFut : completableFutures

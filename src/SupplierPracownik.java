@@ -2,13 +2,14 @@ import java.util.function.Supplier;
 
 public class SupplierPracownik implements Supplier<Pracownik> {
 
-    public Pracownik pracownik;
+    public String  path;
 
     SupplierPracownik(String path){
-        pracownik = Controller.getEmployee(path);
+        this.path = path;
     }
     @Override
     public Pracownik get() {
-        return pracownik;
+
+        return Controller.getEmployee(path);
     }
 }
