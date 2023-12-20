@@ -1,6 +1,6 @@
 import java.math.BigDecimal;
 
-public class Dyrektor extends Pracownik {
+public class Dyrektor extends Pracownik  {
 
     private BigDecimal ServiceAllowance;
 

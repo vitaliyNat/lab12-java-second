@@ -1,11 +1,14 @@
-import javax.management.ObjectName;
 import java.io.*;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedList;
 import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -80,12 +83,15 @@ public class Controller {
         return choose.equals("D") || choose.equals("H");
     }
     private static boolean  isValidCopyChoose(String choose){
-        return choose.equals("Z") || choose.equals("O");
+        return choose.equalsIgnoreCase("Z") || choose.equalsIgnoreCase("O");
     }
 
     public static void showMenu(DataBase dataBase){
         int choose = 1;
-        do{System.out.println("MENU");
+        do{
+            try{
+                System.out.println("MENU");
+
         System.out.println("\t 1. Lista pracowników");
         System.out.println("\t 2. Dodaj pracownika");
         System.out.println("\t 3. Usuń pracownika");
@@ -107,6 +113,7 @@ public class Controller {
                     System.out.println("Dodanie Pracownika: ");
                     if(getKey()){
                     dataBase.addEmployee(temp);
+                    saveEmployee(temp);
                     System.out.println("New Employee added");
                     }else{
                         System.out.println("New Employee not added");
@@ -140,13 +147,17 @@ public class Controller {
                     System.out.print("[Z]achowaj/[O]dtwórz       :        ");
                     choose3 = scanner.nextLine();
                 }while (!isValidCopyChoose(choose3));
-                if(choose3.equals("Z")){
-                    createCopy(dataBase);
-                } else if (choose3.equals("O")) {
-                   getCopy(dataBase);
+                if(choose3.equalsIgnoreCase("Z")){
+                    saveAsyncEmployees(dataBase);
+                } else if (choose3.equalsIgnoreCase("O")) {
+                   getAsyncEmployees(dataBase);
                 }
             }break;
-        }}while (choose !=0);
+        }
+            }catch (Exception e){
+                System.out.println("Nieprawidlowy wybór");
+            }
+        }while (choose !=0);
     }
     private static boolean getKey(){
         String choose = "";
@@ -219,7 +230,7 @@ public class Controller {
 
     private static void createCopy(DataBase dataBase){
         try{
-            FileOutputStream fileOut = new FileOutputStream("./src/backup.txt");
+            FileOutputStream fileOut = new FileOutputStream("./data/backup.txt");
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
 
             dataBase.createCopytemp(out);
@@ -233,7 +244,7 @@ public class Controller {
 
     private static void getCopy(DataBase dataBase){
         try{
-            FileInputStream fileInputStream = new FileInputStream("./src/backup.txt");
+            FileInputStream fileInputStream = new FileInputStream("./data/backup.txt");
             ObjectInputStream in = new ObjectInputStream(fileInputStream);
             Object obj = null;
             dataBase.clear();
@@ -271,6 +282,104 @@ public class Controller {
 
     }
 
+    public static Runnable saveEmployee (Pracownik employee){
+        try{
+
+            FileOutputStream fileOut = new FileOutputStream("./data/employees/"+employee.getPesel()+".txt");
+            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+
+            out.writeObject(employee);
+            out.writeObject(new endOfFile());
+            out.close();
+            fileOut.close();
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+        return new Runnable() {
+            @Override
+            public void run() {
+
+            }
+        };
+    }
+
+
+    public static Pracownik getEmployee(String path){
+        try{
+            FileInputStream fileInputStream = new FileInputStream(path);
+            ObjectInputStream in = new ObjectInputStream(fileInputStream);
+            Object obj = null;
+            obj = in.readObject();
+
+
+            in.close();
+            fileInputStream.close();
+            return (Pracownik) obj;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    private static void saveAsyncEmployees(DataBase dataBase){
+        try {
+            ExecutorService executorService = Executors.newFixedThreadPool(10);
+            LinkedList<CompletableFuture<Void>> completableFutures = new LinkedList<>();
+            dataBase.getMainDataBase().forEach((pesel, employee) -> {
+                completableFutures.add(CompletableFuture.runAsync(saveEmployee(employee), executorService));
+            });
+            for (CompletableFuture<Void> cFut : completableFutures
+            ) {
+                try {
+                    cFut.get();
+                } catch (ExecutionException e) {
+                    System.out.println("Interrupted exception: " + e);
+                } catch (InterruptedException e) {
+                    System.out.println("Execution exception: " + e);
+                }
+            }
+            System.out.println("Zapisano Asynchronicznie");
+        }catch (Exception e){
+            e.printStackTrace();
+            System.out.println("Ab");
+        }
+
+    }
+
+    private static void getAsyncEmployees(DataBase dataBase){
+        try {
+            ExecutorService executorService = Executors.newFixedThreadPool(10);
+            LinkedList<CompletableFuture<Pracownik>> completableFutures = new LinkedList<>();
+
+            File employeesData = new File("./data/employees/");
+
+            for (File employeeFile : employeesData.listFiles()
+                 ) {
+                completableFutures.add(CompletableFuture.supplyAsync((Supplier<Pracownik>) new SupplierPracownik(employeeFile.getPath()), executorService));
+            }
+
+            for (CompletableFuture<Pracownik> cFut : completableFutures
+            ) {
+                try {
+                    cFut.get();
+                    dataBase.addEmployee(cFut.get());
+                } catch (ExecutionException e) {
+                    System.out.println("Interrupted exception: " + e);
+                } catch (InterruptedException e) {
+                    System.out.println("Execution exception: " + e);
+                }
+            }
+            System.out.println("Odczytano Asynchronicznie");
+        }catch (Exception e){
+            e.printStackTrace();
+
+        }
+
+    }
+
 }
+
 
 
