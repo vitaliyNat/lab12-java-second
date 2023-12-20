@@ -2,17 +2,18 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
+import java.util.zip.*;
+
 
 public class Controller {
     public static Pracownik newEmployee(){
@@ -150,6 +151,7 @@ public class Controller {
                 }while (!isValidCopyChoose(choose3));
                 if(choose3.equalsIgnoreCase("Z")){
                     saveAsyncEmployees(dataBase);
+
                 } else if (choose3.equalsIgnoreCase("O")) {
                    getAsyncEmployees(dataBase);
                 }
@@ -157,6 +159,7 @@ public class Controller {
         }
             }catch (Exception e){
                 System.out.println("Nieprawidlowy wybór");
+                e.printStackTrace();
             }
         }while (choose !=0);
     }
@@ -260,26 +263,46 @@ public class Controller {
         }
     }
 
-    private static void zipCompression(Path outFile, Path fileToZip){
-        try {
-            ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(outFile));
-            ZipEntry zipEntry = new ZipEntry(fileToZip.getFileName().toString());
-            zipOutputStream.putNextEntry(zipEntry);
-            Files.copy(fileToZip,zipOutputStream);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+
+
+    private static  void zipCompression(String outfile, File dirToZip) throws IOException {
+        int iByte = 0;
+        FileOutputStream f = new FileOutputStream(outfile);
+        CheckedOutputStream ad32o = new CheckedOutputStream(f,new Adler32());
+        ZipOutputStream zos = new ZipOutputStream(ad32o);
+        BufferedOutputStream out  = new BufferedOutputStream(zos);
+        for (File infile: dirToZip.listFiles()
+             ) {
+                BufferedInputStream in  = new BufferedInputStream(new FileInputStream(infile));
+                zos.putNextEntry(new ZipEntry(infile.getName()));
+                while ((iByte = in.read()) != -1){
+                    out.write(iByte);
+                }
+                in.close();
+                out.flush();
         }
+        out.close();
+
     }
-    private static void zipDecompression(Path outDir, Path fileZip){
-        try {
-            ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(fileZip));
-            ZipEntry zipEntry = zipInputStream.getNextEntry();
-            Path outFile = outDir.resolve(zipEntry.getName());
-            Files.copy(zipInputStream,outFile);
-            zipInputStream.closeEntry();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+
+    private static void zipDecompression(String inFile, File outDir) throws IOException {
+        int iByte = 0;
+        FileInputStream fi = new FileInputStream(inFile);
+        CheckedInputStream ad32i = new CheckedInputStream(fi, new Adler32());
+        ZipInputStream in  = new ZipInputStream(ad32i);
+        BufferedInputStream bis = new BufferedInputStream(in);
+        String fileName;
+        int i = 0;
+        while(in.getNextEntry() != null){
+            i++;
+            FileWriter  temp = new FileWriter("./data/employees/" + String.valueOf(i) + ".txt");
+            while ((iByte = bis.read() )!= -1){
+                temp.write(iByte);
+                temp.flush();
+            }
+
         }
+        bis.close();
 
     }
 
@@ -290,7 +313,7 @@ public class Controller {
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
 
             out.writeObject(employee);
-            out.writeObject(new EndOfFile());
+
             out.close();
             fileOut.close();
         }catch (IOException e){
@@ -336,15 +359,24 @@ public class Controller {
                     System.out.println("Execution exception: " + e);
                 }
             }
-            System.out.println("Zapisano Asynchronicznie");
+            System.out.print("Wpisz Nazwe backup        :        ");
+            Scanner scanner  = new Scanner(System.in);
+            String backupName = scanner.nextLine();
+            File outdir = new File("./data/employees/");
+            zipCompression("./backups/"+backupName+".zip", outdir);
+//            for (File tempfile: outdir.listFiles()
+//                 ) {
+//                tempfile.delete();
+//            }
         }catch (Exception e){
             e.printStackTrace();
         }
 
     }
 
-    private static void getAsyncEmployees(DataBase dataBase){
+    private static void getAsyncEmployees(DataBase dataBase) throws IOException{
         try {
+
             ExecutorService executorService = Executors.newFixedThreadPool(10);
             ArrayList<CompletableFuture<Pracownik>> completableFutures = new ArrayList<>();
 
