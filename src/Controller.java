@@ -3,10 +3,8 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Objects;
-import java.util.Scanner;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -102,6 +100,8 @@ public class Controller {
         System.out.print("Wybór -> ");
         Scanner scan  = new Scanner(System.in);
          choose = scan.nextInt();
+         if(choose == 0) return;
+
         switch (choose){
             case 1: {
                 System.out.println("Lista pracowników");
@@ -265,45 +265,49 @@ public class Controller {
 
 
 
-    private static  void zipCompression(String outfile, File dirToZip) throws IOException {
-        int iByte = 0;
-        FileOutputStream f = new FileOutputStream(outfile);
-        CheckedOutputStream ad32o = new CheckedOutputStream(f,new Adler32());
-        ZipOutputStream zos = new ZipOutputStream(ad32o);
-        BufferedOutputStream out  = new BufferedOutputStream(zos);
-        for (File infile: dirToZip.listFiles()
-             ) {
-                BufferedInputStream in  = new BufferedInputStream(new FileInputStream(infile));
-                zos.putNextEntry(new ZipEntry(infile.getName()));
-                while ((iByte = in.read()) != -1){
-                    out.write(iByte);
-                }
-                in.close();
-                out.flush();
-        }
-        out.close();
+    public static void zipDirectory(String sourceDir, String zipFile) throws IOException {
+        Path sourcePath = Paths.get(sourceDir);
+        try (FileOutputStream fos = new FileOutputStream(zipFile);
+             CheckedOutputStream checksum = new CheckedOutputStream(fos, new Adler32());
+             ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(checksum))) {
 
+            Files.walk(sourcePath)
+                    .filter(path -> !Files.isDirectory(path))
+                    .forEach(path -> {
+                        ZipEntry entry = new ZipEntry(sourcePath.relativize(path).toString());
+                        try {
+                            zos.putNextEntry(entry);
+                            Files.copy(path, zos);
+                            zos.closeEntry();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+        }
     }
 
-    private static void zipDecompression(String inFile, File outDir) throws IOException {
-        int iByte = 0;
-        FileInputStream fi = new FileInputStream(inFile);
-        CheckedInputStream ad32i = new CheckedInputStream(fi, new Adler32());
-        ZipInputStream in  = new ZipInputStream(ad32i);
-        BufferedInputStream bis = new BufferedInputStream(in);
-        String fileName;
-        int i = 0;
-        while(in.getNextEntry() != null){
-            i++;
-            FileWriter  temp = new FileWriter("./data/employees/" + String.valueOf(i) + ".txt");
-            while ((iByte = bis.read() )!= -1){
-                temp.write(iByte);
-                temp.flush();
+
+    public static void unzipDirectory(String zipFile, String destDir) throws IOException {
+        Path destPath = Paths.get(destDir);
+
+        try (FileInputStream fis = new FileInputStream(zipFile);
+             CheckedInputStream checksum = new CheckedInputStream(fis, new Adler32());
+             ZipInputStream zis = new ZipInputStream(new BufferedInputStream(checksum))) {
+
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                Path entryPath = destPath.resolve(entry.getName());
+
+                if (entry.isDirectory()) {
+                    Files.createDirectories(entryPath);
+                } else {
+                    Files.createDirectories(entryPath.getParent());
+                    Files.copy(zis, entryPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+
+                zis.closeEntry();
             }
-
         }
-        bis.close();
-
     }
 
     public static void saveEmployee (Pracownik employee){
@@ -363,11 +367,12 @@ public class Controller {
             Scanner scanner  = new Scanner(System.in);
             String backupName = scanner.nextLine();
             File outdir = new File("./data/employees/");
-            zipCompression("./backups/"+backupName+".zip", outdir);
-//            for (File tempfile: outdir.listFiles()
-//                 ) {
-//                tempfile.delete();
-//            }
+            //zipCompression("./backups/"+backupName+".zip", outdir);
+            zipDirectory(outdir.getPath(),"./backups/"+backupName+".zip");
+            for (File tempfile: outdir.listFiles()
+                 ) {
+                tempfile.delete();
+            }
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -376,6 +381,18 @@ public class Controller {
 
     private static void getAsyncEmployees(DataBase dataBase) throws IOException{
         try {
+            System.out.println("Wpisz nazwe backupu z ktorego chcesz odczytac dane");
+            System.out.println("__________________________________________");
+            File backupNames = new File("./backups/");
+            for (File tempFile: backupNames.listFiles()
+                 ) {
+                System.out.println("\t\t"+ tempFile.getName() + "\n");
+            }
+            System.out.println("__________________________________________");
+            System.out.print("Nazwa backupu( bez .zip):\t");
+            Scanner scanner = new Scanner(System.in);
+            String backupName = scanner.nextLine();
+            unzipDirectory("./backups/"+backupName+".zip","./data/employees/");
 
             ExecutorService executorService = Executors.newFixedThreadPool(10);
             ArrayList<CompletableFuture<Pracownik>> completableFutures = new ArrayList<>();
@@ -384,6 +401,7 @@ public class Controller {
 
             for (File employeeFile : employeesData.listFiles()
                  ) {
+                System.out.println(employeeFile.getPath());
                 completableFutures.add(CompletableFuture.supplyAsync( new SupplierPracownik(employeeFile.getPath()), executorService));
             }
 
@@ -399,6 +417,14 @@ public class Controller {
                 }
             }
             System.out.println("Odczytano Asynchronicznie");
+            File outdir = new File("./data/employees/");
+            for (File tempfile: outdir.listFiles()
+            ) {
+                tempfile.delete();
+            }
+        }catch (NullPointerException e){
+            System.out.println("Nieprawidlowa nazwa backupu!");
+
         }catch (Exception e){
             e.printStackTrace();
 
