@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Supplier;
 import java.util.zip.*;
 
 
@@ -79,91 +78,15 @@ public class Controller {
         return temp;
 
     }
-    private static boolean  isValidPosition(String choose){
+    public static boolean  isValidPosition(String choose){
         return choose.equals("D") || choose.equals("H");
     }
-    private static boolean  isValidCopyChoose(String choose){
-        return choose.equalsIgnoreCase("Z") || choose.equalsIgnoreCase("O");
+    public static boolean  isValidCopyChoose(String choose){
+        return choose.equalsIgnoreCase("Z") || choose.equalsIgnoreCase("O" ) ||  choose.equalsIgnoreCase("P");
     }
 
-    public static void showMenu(DataBase dataBase){
-        int choose = 0;
-        do{
-            try{
-                System.out.println("MENU");
 
-        System.out.println("\t 1. Lista pracowników");
-        System.out.println("\t 2. Dodaj pracownika");
-        System.out.println("\t 3. Usuń pracownika");
-        System.out.println("\t 4. Kopia zapasowa");
-        System.out.println("\t 0. End program");
-        System.out.print("Wybór -> ");
-        Scanner scan  = new Scanner(System.in);
-         choose = scan.nextInt();
-         if(choose == 0) return;
-
-        switch (choose){
-            case 1: {
-                System.out.println("Lista pracowników");
-                dataBase.showAllEmployeers();}break;
-            case 2: {
-                System.out.println("Dodanie Pracownika: ");
-
-                Pracownik temp = newEmployee();
-                if(dataBase.has(temp)){
-                    temp.showEmployee();
-                    System.out.println("Dodanie Pracownika: ");
-                    if(getKey()){
-                    dataBase.addEmployee(temp);
-                    saveEmployee(temp);
-                    System.out.println("New Employee added");
-                    }else{
-                        System.out.println("New Employee not added");
-                    }
-                }else{
-                    System.out.println("Pracownik o podanym numerze PESEL już istnieje");
-                }
-            }break;
-            case 3:{
-                System.out.println("Usuniencie pracownika");
-                System.out.print("Wprowadz numer PESEL pracownika do usunięcia :");
-                Scanner scanner = new Scanner(System.in);
-                String tempPesel = scanner.nextLine();
-                Pracownik employee = dataBase.searchEmployee(tempPesel);
-                if(employee != null){
-                    employee.showEmployee();
-                    System.out.println("Usuniencie pracownika");
-                    if(getKey()){
-                    dataBase.removeEmployee(employee);
-                    System.out.println("Employee removed Successfully");
-                    }else{
-                        System.out.println("Employee removed Aborted");
-                    }
-                }
-            }break;
-            case 4: {
-                String choose3;
-
-                Scanner scanner  = new Scanner(System.in);
-                do{
-                    System.out.print("[Z]achowaj/[O]dtwórz       :        ");
-                    choose3 = scanner.nextLine();
-                }while (!isValidCopyChoose(choose3));
-                if(choose3.equalsIgnoreCase("Z")){
-                    saveAsyncEmployees(dataBase);
-
-                } else if (choose3.equalsIgnoreCase("O")) {
-                   getAsyncEmployees(dataBase);
-                }
-            }break;
-        }
-            }catch (Exception e){
-                System.out.println("Nieprawidlowy wybór");
-                e.printStackTrace();
-            }
-        }while (choose !=0);
-    }
-    private static boolean getKey(){
+    public static boolean getKey(){
         String choose = "";
         do{
         System.out.println("[Enter] - Podtwierdz \n [Q] Porzuc");
@@ -195,7 +118,7 @@ public class Controller {
         }
         }while(true);
     }
-    private static boolean checkPesel(String pesel){
+    public static boolean checkPesel(String pesel){
        if(pesel != null && pesel.length() == 11){
            for (char c:pesel.toCharArray()) {
                if(!Character.isDigit(c)){
@@ -203,11 +126,7 @@ public class Controller {
                }
 
            }
-           if(checkPeselF(pesel)){
-           return true;
-           }else{
-               return false;
-           }
+           return checkPeselF(pesel);
        }
        return false;
     }
@@ -232,7 +151,7 @@ public class Controller {
         }
     }
 
-    private static void createCopy(DataBase dataBase){
+    public static boolean createCopy(Database dataBase){
         try{
             FileOutputStream fileOut = new FileOutputStream("./data/backup.txt");
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -241,22 +160,25 @@ public class Controller {
             out.writeObject(new EndOfFile());
             out.close();
             fileOut.close();
+            return true;
         }catch (IOException e){
             e.printStackTrace();
+            return false;
         }
     }
 
-    private static void getCopy(DataBase dataBase){
+    public static boolean getCopy(Database dataBase){
         try{
             FileInputStream fileInputStream = new FileInputStream("./data/backup.txt");
             ObjectInputStream in = new ObjectInputStream(fileInputStream);
             Object obj = null;
             dataBase.clear();
-            while((obj = in.readObject()) instanceof EndOfFile == false){
+            while(!((obj = in.readObject()) instanceof EndOfFile)){
                 dataBase.addEmployee((Pracownik) obj);
             }
             in.close();
             fileInputStream.close();
+            return true;
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -265,7 +187,7 @@ public class Controller {
 
 
 
-    public static void zipDirectory(String sourceDir, String zipFile) throws IOException {
+    public static boolean zipDirectory(String sourceDir, String zipFile) throws IOException {
         Path sourcePath = Paths.get(sourceDir);
         try (FileOutputStream fos = new FileOutputStream(zipFile);
              CheckedOutputStream checksum = new CheckedOutputStream(fos, new Adler32());
@@ -283,11 +205,13 @@ public class Controller {
                             e.printStackTrace();
                         }
                     });
+            return true;
         }
+
     }
 
 
-    public static void unzipDirectory(String zipFile, String destDir) throws IOException {
+    public static boolean unzipDirectory(String zipFile, String destDir) throws IOException {
         Path destPath = Paths.get(destDir);
 
         try (FileInputStream fis = new FileInputStream(zipFile);
@@ -307,10 +231,11 @@ public class Controller {
 
                 zis.closeEntry();
             }
+            return true;
         }
     }
 
-    public static void saveEmployee (Pracownik employee){
+    public static boolean saveEmployee (Pracownik employee){
         try{
 
             FileOutputStream fileOut = new FileOutputStream("./data/employees/"+employee.getPesel()+".txt");
@@ -320,10 +245,11 @@ public class Controller {
 
             out.close();
             fileOut.close();
+            return true;
         }catch (IOException e){
             e.printStackTrace();
         }
-
+    return false;
     }
 
 
@@ -340,17 +266,17 @@ public class Controller {
             return (Pracownik) obj;
 
         } catch (Exception e) {
-            e.printStackTrace();
+           System.out.println("Nie udalo sie odczytac pracownika");
         }
 
         return null;
     }
 
-    private static void saveAsyncEmployees(DataBase dataBase){
+    public static void saveAsyncEmployees(Database dataBase, String backupName){
         try {
             ExecutorService executorService = Executors.newFixedThreadPool(10);
             ArrayList<CompletableFuture<Void>> completableFutures = new ArrayList<>();
-            dataBase.getMainDataBase().forEach((pesel, employee) -> {
+            dataBase.getMainDatabase().forEach((pesel, employee) -> {
                 completableFutures.add(CompletableFuture.runAsync(new WriteRunnable(employee), executorService));
             });
             for (CompletableFuture<Void> cFut : completableFutures
@@ -363,37 +289,34 @@ public class Controller {
                     System.out.println("Execution exception: " + e);
                 }
             }
-            System.out.print("Wpisz Nazwe backup        :        ");
-            Scanner scanner  = new Scanner(System.in);
-            String backupName = scanner.nextLine();
+
             File outdir = new File("./data/employees/");
-            //zipCompression("./backups/"+backupName+".zip", outdir);
             zipDirectory(outdir.getPath(),"./backups/"+backupName+".zip");
-            for (File tempfile: outdir.listFiles()
-                 ) {
-                tempfile.delete();
-            }
+            System.out.println("Backup o nazwie: "+ backupName+ " zostal stworzony");
         }catch (Exception e){
             e.printStackTrace();
+        }finally {
+            File outdir = new File("./data/employees/");
+            for (File tempfile: outdir.listFiles()
+            ) {
+                tempfile.delete();
+            }
         }
 
     }
 
-    private static void getAsyncEmployees(DataBase dataBase) throws IOException{
+    public static void getAsyncEmployees(Database dataBase, String backupName) throws IOException{
         try {
-            System.out.println("Wpisz nazwe backupu z ktorego chcesz odczytac dane");
-            System.out.println("__________________________________________");
-            File backupNames = new File("./backups/");
-            for (File tempFile: backupNames.listFiles()
-                 ) {
-                System.out.println("\t\t"+ tempFile.getName() + "\n");
-            }
-            System.out.println("__________________________________________");
-            System.out.print("Nazwa backupu( bez .zip):\t");
-            Scanner scanner = new Scanner(System.in);
-            String backupName = scanner.nextLine();
-            unzipDirectory("./backups/"+backupName+".zip","./data/employees/");
+            List<Pracownik> employees = new ArrayList<Pracownik>();
 
+            try{
+            unzipDirectory("./backups/"+backupName+".zip","./data/employees/");
+            }catch (FileNotFoundException e){
+                System.out.println("Nieprawidlowa nazwa backupu!");
+
+            }catch (Exception e){
+                System.out.println("Nie mozna odczytac ten backup");
+            }
             ExecutorService executorService = Executors.newFixedThreadPool(10);
             ArrayList<CompletableFuture<Pracownik>> completableFutures = new ArrayList<>();
 
@@ -401,33 +324,41 @@ public class Controller {
 
             for (File employeeFile : employeesData.listFiles()
                  ) {
-                System.out.println(employeeFile.getPath());
                 completableFutures.add(CompletableFuture.supplyAsync( new SupplierPracownik(employeeFile.getPath()), executorService));
             }
 
             for (CompletableFuture<Pracownik> cFut : completableFutures
             ) {
                 try {
-                    cFut.get();
-                    dataBase.addEmployee(cFut.get());
+                    Pracownik pracownik = cFut.get();
+                    if(pracownik  != null){
+                    employees.add(pracownik);
+                    }
+
                 } catch (ExecutionException e) {
                     System.out.println("Interrupted exception: " + e);
                 } catch (InterruptedException e) {
                     System.out.println("Execution exception: " + e);
                 }
             }
+            if(!employees.isEmpty()){
+                dataBase.clear();
+            }
+            for (Pracownik pracownik:  employees
+                 ) {
+                dataBase.addEmployee(pracownik);
+            }
             System.out.println("Odczytano Asynchronicznie");
+
+        }catch (Exception e){
+            e.printStackTrace();
+
+        }finally {
             File outdir = new File("./data/employees/");
             for (File tempfile: outdir.listFiles()
             ) {
                 tempfile.delete();
             }
-        }catch (NullPointerException e){
-            System.out.println("Nieprawidlowa nazwa backupu!");
-
-        }catch (Exception e){
-            e.printStackTrace();
-
         }
 
     }

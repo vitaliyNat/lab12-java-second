@@ -1,3 +1,4 @@
+import java.io.EOFException;
 import java.util.function.Supplier;
 
 public class SupplierPracownik implements Supplier<Pracownik> {
