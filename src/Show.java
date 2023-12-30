@@ -31,7 +31,6 @@ public class Show {
                             System.out.println("Dodanie Pracownika: ");
                             if(Controller.getKey()){
                                 dataBase.addEmployee(temp);
-                                Controller.saveEmployee(temp);
                                 System.out.println("New Employee added");
                             }else{
                                 System.out.println("New Employee not added");
@@ -64,7 +63,7 @@ public class Show {
                         do{
                             System.out.print("[Z]achowaj/[O]dtwórz/[P]regląd       :        ");
                             choose3 = scanner.nextLine();
-                        }while (!Controller.isValidCopyChoose(choose3));
+                        }while (!Controller.isValidSerializationChoose(choose3));
                         if(choose3.equalsIgnoreCase("Z")){
                             System.out.println("Dostepne backupy");
                             System.out.println("__________________________________________");

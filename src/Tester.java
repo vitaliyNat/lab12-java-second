@@ -3,6 +3,7 @@ import org.junit.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import static org.junit.Assert.*;
 
@@ -107,7 +108,7 @@ public class Tester {
         Handlowiec trader4 = new Handlowiec("06280472779","Andy","Bernard", new BigDecimal(1700),"193-654-789",new BigDecimal(150),new BigDecimal(7));
         Handlowiec trader5 = new Handlowiec("52100876098","Stanley","Hudson", new BigDecimal(1700),"923-654-789",new BigDecimal(150),new BigDecimal(7));
         Handlowiec trader6 = new Handlowiec("87011162572","Ryan","Howard", new BigDecimal(1700),"183-654-789",new BigDecimal(150),new BigDecimal(7));
-        Handlowiec trader7 = new Handlowiec("52100876098","Toby","Flenderson", new BigDecimal(1700),"543-654-789",new BigDecimal(150),new BigDecimal(7));
+        Handlowiec trader7 = new Handlowiec("02281422935","Toby","Flenderson", new BigDecimal(1700),"543-654-789",new BigDecimal(150),new BigDecimal(7));
         database.addEmployee(trader1);
         database.addEmployee(director1);
         database.addEmployee(director2);
@@ -136,7 +137,7 @@ public class Tester {
         Handlowiec trader4 = new Handlowiec("06280472779","Andy","Bernard", new BigDecimal(1700),"193-654-789",new BigDecimal(150),new BigDecimal(7));
         Handlowiec trader5 = new Handlowiec("52100876098","Stanley","Hudson", new BigDecimal(1700),"923-654-789",new BigDecimal(150),new BigDecimal(7));
         Handlowiec trader6 = new Handlowiec("87011162572","Ryan","Howard", new BigDecimal(1700),"183-654-789",new BigDecimal(150),new BigDecimal(7));
-        Handlowiec trader7 = new Handlowiec("52100876098","Toby","Flenderson", new BigDecimal(1700),"543-654-789",new BigDecimal(150),new BigDecimal(7));
+        Handlowiec trader7 = new Handlowiec("02281422935","Toby","Flenderson", new BigDecimal(1700),"543-654-789",new BigDecimal(150),new BigDecimal(7));
         database.addEmployee(trader1);
         database.addEmployee(director1);
         database.addEmployee(director2);
@@ -166,6 +167,74 @@ public class Tester {
         assertFalse(Controller.checkPesel(p));
     }
 
+
+    @Test
+    public void checkSerializationToZip() throws Exception{
+        Handlowiec trader1 = new Handlowiec("03282011793","Jim","Halpert", new BigDecimal(1500),"123-456-789",new BigDecimal(150),new BigDecimal(7));
+        Dyrektor director1 = new Dyrektor("80092981991","Michael","Scott", new BigDecimal(4500),"123-456-999",new BigDecimal(200),"986-343",new BigDecimal(100));
+        Handlowiec trader2 = new Handlowiec("15242160793","Dwight","Schrute", new BigDecimal(1700),"123-654-789",new BigDecimal(150),new BigDecimal(7));
+        Dyrektor director2 = new Dyrektor("05241117834","Robert","California", new BigDecimal(3500),"143-456-999",new BigDecimal(190),"980-343",new BigDecimal(90));
+        Dyrektor director3 = new Dyrektor("94050104661","Janet","Levinson", new BigDecimal(3000),"143-444-999",new BigDecimal(160),"980-000",new BigDecimal(95));
+        Handlowiec trader3 = new Handlowiec("95043037348","Pam","Beesly", new BigDecimal(1700),"132-654-789",new BigDecimal(150),new BigDecimal(7));
+        Handlowiec trader4 = new Handlowiec("06280472779","Andy","Bernard", new BigDecimal(1700),"193-654-789",new BigDecimal(150),new BigDecimal(7));
+        Handlowiec trader5 = new Handlowiec("52100876098","Stanley","Hudson", new BigDecimal(1700),"923-654-789",new BigDecimal(150),new BigDecimal(7));
+        Handlowiec trader6 = new Handlowiec("87011162572","Ryan","Howard", new BigDecimal(1700),"183-654-789",new BigDecimal(150),new BigDecimal(7));
+        Handlowiec trader7 = new Handlowiec("02281422935","Toby","Flenderson", new BigDecimal(1700),"543-654-789",new BigDecimal(150),new BigDecimal(7));
+        database.addEmployee(trader1);
+        database.addEmployee(director1);
+        database.addEmployee(director2);
+        database.addEmployee(director3);
+        database.addEmployee(trader2);
+        database.addEmployee(trader3);
+        database.addEmployee(trader4);
+        database.addEmployee(trader5);
+        database.addEmployee(trader6);
+        database.addEmployee(trader7);
+        Controller.saveAsyncEmployees(database,"testBackup");
+        database.clear();
+    }
+
+    @Test
+    public void checkDeserializationFromZip() throws IOException {
+        database.clear();
+        Controller.getAsyncEmployees(database,"testBackup");
+        assertNotEquals(0,database.size());
+        database.clear();
+    }
+    @Test
+    public void checkDeserializationFromCorruptedZip() throws IOException {
+        database.clear();
+        Controller.getAsyncEmployees(database,"corrupted");
+        assertEquals(0,database.size());
+        database.clear();
+    }
+
+    @Test
+    public void addNullEmployeeToThrowException() throws Exception {
+        database.clear();
+        Dyrektor dyrektor = null;
+       database.addEmployee(dyrektor);
+       assertEquals(0,database.size());
+    }
+    @Test
+    public void saveNullEmployeeToFile() throws Exception {
+        database.clear();
+        Dyrektor dyrektor = null;
+        Controller.saveEmployee(dyrektor);
+    }
+
+    @Test
+    public void addEmployeeWithSamePESELMustNotAddedThisEmployee(){
+        database.clear();
+        Handlowiec trader1 = new Handlowiec("80092981991","Jim","Halpert", new BigDecimal(1500),"123-456-789",new BigDecimal(150),new BigDecimal(7));
+        Dyrektor director1 = new Dyrektor("80092981991","Michael","Scott", new BigDecimal(4500),"123-456-999",new BigDecimal(200),"986-343",new BigDecimal(100));
+        database.addEmployee(trader1);
+        assertEquals(1,database.size());
+        database.addEmployee(director1);
+        assertEquals(1,database.size());
+//        database.showAllEmployeers();
+        database.clear();
+    }
 
 
 }

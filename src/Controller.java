@@ -81,7 +81,7 @@ public class Controller {
     public static boolean  isValidPosition(String choose){
         return choose.equals("D") || choose.equals("H");
     }
-    public static boolean  isValidCopyChoose(String choose){
+    public static boolean isValidSerializationChoose(String choose){
         return choose.equalsIgnoreCase("Z") || choose.equalsIgnoreCase("O" ) ||  choose.equalsIgnoreCase("P");
     }
 
@@ -150,40 +150,40 @@ public class Controller {
             }
         }
     }
-
-    public static boolean createCopy(Database dataBase){
-        try{
-            FileOutputStream fileOut = new FileOutputStream("./data/backup.txt");
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
-
-            dataBase.createCopytemp(out);
-            out.writeObject(new EndOfFile());
-            out.close();
-            fileOut.close();
-            return true;
-        }catch (IOException e){
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    public static boolean getCopy(Database dataBase){
-        try{
-            FileInputStream fileInputStream = new FileInputStream("./data/backup.txt");
-            ObjectInputStream in = new ObjectInputStream(fileInputStream);
-            Object obj = null;
-            dataBase.clear();
-            while(!((obj = in.readObject()) instanceof EndOfFile)){
-                dataBase.addEmployee((Pracownik) obj);
-            }
-            in.close();
-            fileInputStream.close();
-            return true;
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+//
+//    public static boolean createCopy(Database dataBase){
+//        try{
+//            FileOutputStream fileOut = new FileOutputStream("./data/backup.txt");
+//            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+//
+//            dataBase.createCopytemp(out);
+//            out.writeObject(new EndOfFile());
+//            out.close();
+//            fileOut.close();
+//            return true;
+//        }catch (IOException e){
+//            e.printStackTrace();
+//            return false;
+//        }
+//    }
+//
+//    public static boolean getCopy(Database dataBase){
+//        try{
+//            FileInputStream fileInputStream = new FileInputStream("./data/backup.txt");
+//            ObjectInputStream in = new ObjectInputStream(fileInputStream);
+//            Object obj = null;
+//            dataBase.clear();
+//            while(!((obj = in.readObject()) instanceof EndOfFile)){
+//                dataBase.addEmployee((Pracownik) obj);
+//            }
+//            in.close();
+//            fileInputStream.close();
+//            return true;
+//
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
 
 
 
@@ -235,7 +235,7 @@ public class Controller {
         }
     }
 
-    public static boolean saveEmployee (Pracownik employee){
+    public static boolean saveEmployee (Pracownik employee) throws Exception {
         try{
 
             FileOutputStream fileOut = new FileOutputStream("./data/employees/"+employee.getPesel()+".txt");
@@ -246,7 +246,7 @@ public class Controller {
             out.close();
             fileOut.close();
             return true;
-        }catch (IOException e){
+        }catch (Exception e){
             e.printStackTrace();
         }
     return false;
@@ -272,8 +272,9 @@ public class Controller {
         return null;
     }
 
-    public static void saveAsyncEmployees(Database dataBase, String backupName){
+    public static void saveAsyncEmployees(Database dataBase, String backupName) throws Exception {
         try {
+
             ExecutorService executorService = Executors.newFixedThreadPool(10);
             ArrayList<CompletableFuture<Void>> completableFutures = new ArrayList<>();
             dataBase.getMainDatabase().forEach((pesel, employee) -> {
@@ -313,9 +314,11 @@ public class Controller {
             unzipDirectory("./backups/"+backupName+".zip","./data/employees/");
             }catch (FileNotFoundException e){
                 System.out.println("Nieprawidlowa nazwa backupu!");
+                throw new FileNotFoundException();
 
             }catch (Exception e){
                 System.out.println("Nie mozna odczytac ten backup");
+                throw new Exception();
             }
             ExecutorService executorService = Executors.newFixedThreadPool(10);
             ArrayList<CompletableFuture<Pracownik>> completableFutures = new ArrayList<>();
@@ -337,8 +340,10 @@ public class Controller {
 
                 } catch (ExecutionException e) {
                     System.out.println("Interrupted exception: " + e);
+                    throw new Exception();
                 } catch (InterruptedException e) {
                     System.out.println("Execution exception: " + e);
+                    throw new Exception();
                 }
             }
             if(!employees.isEmpty()){

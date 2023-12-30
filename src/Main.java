@@ -1,7 +1,8 @@
+import java.math.BigDecimal;
 
 public class Main {
     public static void main(String[] args) {
-        Database dataBase = new Database();
-        Show.showMenu(dataBase);
+        Database database = new Database();
+        Show.showMenu(database);
     }
 }

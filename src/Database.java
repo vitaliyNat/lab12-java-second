@@ -14,7 +14,13 @@ public class Database {
         return mainDatabase;
     }
     public void addEmployee(Pracownik employee){
+        try{
+            if(has(employee)){
         mainDatabase.put(employee.getPesel(), employee);
+            }
+        }catch (Exception e){
+            System.out.println("Nieprawidlowy pracownik");
+        }
     }
     public Pracownik removeEmployee(Pracownik employee){
         return mainDatabase.remove(employee.getPesel());

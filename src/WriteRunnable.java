@@ -7,6 +7,10 @@ public class WriteRunnable implements  Runnable{
     }
     @Override
     public void run() {
-        Controller.saveEmployee(employee);
+        try {
+            Controller.saveEmployee(employee);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
