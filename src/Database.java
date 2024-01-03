@@ -13,14 +13,16 @@ public class Database {
     public HashMap<String,Pracownik> getMainDatabase(){
         return mainDatabase;
     }
-    public void addEmployee(Pracownik employee){
+    public boolean addEmployee(Pracownik employee){
         try{
             if(has(employee)){
         mainDatabase.put(employee.getPesel(), employee);
+        return true;
             }
         }catch (Exception e){
             System.out.println("Nieprawidlowy pracownik");
         }
+        return false;
     }
     public Pracownik removeEmployee(Pracownik employee){
         return mainDatabase.remove(employee.getPesel());
